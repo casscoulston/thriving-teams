@@ -14,14 +14,41 @@ Raw data are not included in this repository due to confidentiality and ethics r
 
 ## Current workflow
 
-1. `scripts/00_import_raw_data.R`
-   - imports the raw SPSS `.sav` dataset into R
-   - saves an R working file as `wide_df_raw.rds`
+## Scripts
 
-2. `scripts/01_build_table1_analytic_sample.R`
-   - identifies the analytic sample using the rule that teams must have at least 3 responding members at each wave
-   - generates Table 1 sample characteristics by measurement wave
-   - exports a local CSV version of Table 1
+### Data import and sample construction
+- `scripts/00_import_raw_data.R`  
+  Imports the raw SPSS dataset and saves an R working file.
+
+- `scripts/01_build_table1_analytic_sample.R`  
+  Builds Table 1 sample characteristics by wave for the analytic sample.
+
+### Descriptives and sample transparency
+- `scripts/02_supplementary_role_based_demographics.R`  
+  Generates role-based descriptive statistics by wave.
+
+- `scripts/03_attrition_full_sample.R`  
+  Summarises the full sample by wave and calculates full-sample attrition.
+
+- `scripts/04_sample_comparison_and_attrition.R`  
+  Compares full and analytic samples and summarises attrition across waves.
+
+- `scripts/05_compare_full_vs_analytic_and_attrition_bias.R`  
+  Tests whether the analytic sample differs from the full sample and assesses attrition bias.
+
+- `scripts/06_build_supplementary_table_s3_attrition_retention.R`  
+  Produces Supplementary Table S3 summarising sample comparison and attrition.
+
+- `scripts/07_geography_by_wave_and_sample_comparison.R`  
+  Examines geographic composition by wave and compares geography across samples.
+
+- `scripts/08_geography_chisquare_tests.R`  
+  Runs chi-square tests for geographic composition and geography-related attrition.
+
+### Next planned section
+- Psychometrics and aggregation
+- Main analyses
+- Supplementary robustness analyses
 
 ## Analytic sample rule
 
