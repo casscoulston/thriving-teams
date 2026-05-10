@@ -45,9 +45,14 @@ Raw data are not included in this repository due to confidentiality and ethics r
 - `scripts/08_geography_chisquare_tests.R`  
   Runs chi-square tests for geographic composition and geography-related attrition.
 
+  ### Psychometrics and aggregation
+
+- `scripts/09_rebuild_table2_aggregation_reliability.R`  
+  Rebuilds the aggregation and reliability table for team-level constructs across waves. The script computes mean item composites, Cronbach’s alpha, McDonald’s omega, ICC(1), ICC(2), and median/mean rwg(j) for team engagement, control over work time, and team psychological safety.
+  
 ### Next planned section
-- Psychometrics and aggregation
-- Main analyses
+- Means, standard deviations, and correlations
+- Main multilevel analyses
 - Supplementary robustness analyses
 
 ## Analytic sample rule
