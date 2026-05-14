@@ -50,10 +50,12 @@ Raw data are not included in this repository due to confidentiality and ethics r
 - `scripts/09_rebuild_table2_aggregation_reliability.R`  
   Rebuilds the aggregation and reliability table for team-level constructs across waves. The script computes mean item composites, Cronbach’s alpha, McDonald’s omega, ICC(1), ICC(2), and median/mean rwg(j) for team engagement, control over work time, and team psychological safety.
 
+  
+
  ###  Means, standard deviations, and correlations
 
- -  scripts/10_descriptives_reliability_correlations_by_wave.R
-Computes descriptive statistics, internal consistency (alpha, omega), and correlations for the main T1–T2 panel sample used in hypothesis testing. Includes composite variables for all focal constructs and generates the main correlation table with significance testing.
+- `scripts/10_descriptives_reliability_correlations_by_wave.R`  
+    Computes descriptive statistics, internal consistency (alpha, omega), and correlations for the main T1–T2 panel sample used in hypothesis testing. Includes composite variables for all focal constructs and generates the main correlation table with significance testing.
   
 ### Next planned section
 - Main multilevel analyses
