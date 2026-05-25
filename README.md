@@ -59,6 +59,10 @@ Raw data are not included in this repository due to confidentiality and ethics r
 
 - `scripts/10b_descriptives_t1_full_sample.R`  
     Computes descriptives, reliability (Cronbach’s alpha, McDonald’s omega), and correlations for the full T1 sample (teams with ≥3 members). This serves as a robustness check against the reduced T1–T2 panel sample used in the main analyses. Results are consistent with the main findings and are reported in Table S1.
+
+###  Missing data diagnostics
+- `scripts/10c_missing_data_diagnostics.R`  
+     Examines missing data patterns and attrition prior to multilevel modelling. Computes overall missingness, visualises missing data patterns (naniar), and conducts logistic regression analyses to test whether dropout at T2 and T3 is associated with baseline variables (feeling disconnected, connection overload, and team work engagement). Results support a missing at random (MAR) assumption and justify the use of full information maximum likelihood (FIML) in subsequent analyses.
   
 ### Next planned section
 - Main multilevel analyses
