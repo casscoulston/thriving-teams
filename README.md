@@ -56,6 +56,9 @@ Raw data are not included in this repository due to confidentiality and ethics r
 
 - `scripts/10_descriptives_reliability_correlations_by_wave.R`  
     Computes descriptive statistics, internal consistency (alpha, omega), and correlations for the main T1–T2 panel sample used in hypothesis testing. Includes composite variables for all focal constructs and generates the main correlation table with significance testing.
+
+ -  'scripts/10b_descriptives_t1_full_sample.R'
+Computes descriptives, reliability, and correlations for the full T1 sample (teams with ≥3 members). Used as a robustness check to ensure findings are not driven by the reduced panel sample. Results show a highly similar pattern and are reported in Table S1.
   
 ### Next planned section
 - Main multilevel analyses
