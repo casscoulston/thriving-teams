@@ -80,3 +80,9 @@ This yielded the following analytic sample sizes:
 ## Reproducibility
 
 This project is being developed in RStudio using scripted, reproducible workflows. Additional analysis scripts and outputs will be added as the project progresses.
+
+## AI Statement
+
+This code was edited with the assistance of GitHub CoPilot (Powered by GPT 5.5, OpenAI, San Francisco: CA)
+
+After using this tool, the authors reviewed and edited the code as needed and take full responsibility for the final repo.
