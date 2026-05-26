@@ -1,8 +1,9 @@
-install.packages(c("officer", "flextable"))
-library(officer)
-library(flextable)
+# scripts/06_build_supplementary_table_s3_attrition_retention.R
+# Produces Supplementary Table S3 (sample comparison + attrition).
 
-library(tidyverse)
+source(here::here("R", "utils.R"))
+write_session_log("06_build_supplementary_table_s3_attrition_retention")
+
 library(officer)
 library(flextable)
 
@@ -42,8 +43,8 @@ s3_table <- bind_rows(
 
 print(s3_table, n = 20)
 
-dir.create("output/tables", recursive = TRUE, showWarnings = FALSE)
-write_csv(s3_table, "output/tables/supplementary_table_s3_attrition_retention.csv")
+dir.create(here::here("output", "tables"), recursive = TRUE, showWarnings = FALSE)
+write_csv(s3_table, here::here("output", "tables", "supplementary_table_s3_attrition_retention.csv"))
 
 ft <- flextable(s3_table) |>
   theme_booktabs() |>
@@ -71,4 +72,4 @@ doc <- read_docx() |>
   body_add_par("Sample comparison and attrition summary", style = "Normal") |>
   body_add_flextable(ft)
 
-print(doc, target = "output/tables/Supplementary_Table_S3_attrition_retention.docx")
+print(doc, target = here::here("output", "tables", "Supplementary_Table_S3_attrition_retention.docx"))

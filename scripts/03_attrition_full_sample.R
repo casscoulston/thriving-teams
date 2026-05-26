@@ -1,21 +1,10 @@
-library(tidyverse)
-library(haven)
+# scripts/03_attrition_full_sample.R
+# Full-sample summary by wave and full-sample attrition.
 
-wide_df_raw <- readRDS("data_raw/wide_df_raw.rds")
+source(here::here("R", "utils.R"))
+write_session_log("03_attrition_full_sample")
 
-to_numeric_if_labelled <- function(x) {
-  if (inherits(x, "haven_labelled") || inherits(x, "labelled")) {
-    return(as.numeric(haven::zap_labels(x)))
-  }
-  x
-}
-
-clean_team_id <- function(x) {
-  x <- as.character(x)
-  x <- stringr::str_trim(x)
-  x[x %in% c("", "NA", "NaN")] <- NA_character_
-  x
-}
+wide_df_raw <- readRDS(here::here("data_raw", "wide_df_raw.rds"))
 
 df_num <- wide_df_raw %>%
   mutate(across(everything(), to_numeric_if_labelled)) %>%
@@ -65,7 +54,7 @@ print(full_by_wave)
 print(participant_retention_full)
 print(team_retention_full)
 
-dir.create("output/tables", recursive = TRUE, showWarnings = FALSE)
-write_csv(full_by_wave, "output/tables/full_sample_by_wave.csv")
-write_csv(participant_retention_full, "output/tables/participant_retention_full.csv")
-write_csv(team_retention_full, "output/tables/team_retention_full.csv")
+dir.create(here::here("output", "tables"), recursive = TRUE, showWarnings = FALSE)
+write_csv(full_by_wave, here::here("output", "tables", "full_sample_by_wave.csv"))
+write_csv(participant_retention_full, here::here("output", "tables", "participant_retention_full.csv"))
+write_csv(team_retention_full, here::here("output", "tables", "team_retention_full.csv"))

@@ -1,24 +1,15 @@
-install.packages("psych")
+# scripts/09_rebuild_table2_aggregation_reliability.R
+# Aggregation and reliability table for team-level constructs across waves.
+# Computes mean composite, Cronbach's alpha, McDonald's omega, ICC(1), ICC(2),
+# median and mean rwg(j) for team engagement, control over work time and
+# team psychological safety.
 
-library(tidyverse)
-library(haven)
+source(here::here("R", "utils.R"))
+write_session_log("09_rebuild_table2_aggregation_reliability")
+
 library(psych)
 
-wide_df_raw <- readRDS("data_raw/wide_df_raw.rds")
-
-to_numeric_if_labelled <- function(x) {
-  if (inherits(x, "haven_labelled") || inherits(x, "labelled")) {
-    return(as.numeric(haven::zap_labels(x)))
-  }
-  x
-}
-
-clean_team_id <- function(x) {
-  x <- as.character(x)
-  x <- stringr::str_trim(x)
-  x[x %in% c("", "NA", "NaN")] <- NA_character_
-  x
-}
+wide_df_raw <- readRDS(here::here("data_raw", "wide_df_raw.rds"))
 
 df_num <- wide_df_raw %>%
   mutate(across(everything(), to_numeric_if_labelled)) %>%
@@ -28,93 +19,9 @@ df_num <- wide_df_raw %>%
     TeamRef_T3 = clean_team_id(TeamRef_T3)
   )
 
-get_valid_teams <- function(df, team_col) {
-  df %>%
-    filter(!is.na(.data[[team_col]])) %>%
-    count(.data[[team_col]], name = "team_size") %>%
-    filter(team_size >= 3) %>%
-    pull(1)
-}
-
 valid_t1_teams <- get_valid_teams(df_num, "TeamRef_T1")
 valid_t2_teams <- get_valid_teams(df_num, "TeamRef_T2")
 valid_t3_teams <- get_valid_teams(df_num, "TeamRef_T3")
-
-calc_icc <- function(df, team_col, score_col) {
-  d <- df %>%
-    select(team = all_of(team_col), score = all_of(score_col)) %>%
-    filter(!is.na(team), !is.na(score))
-  
-  if (nrow(d) < 3 || dplyr::n_distinct(d$team) < 2) {
-    return(tibble(ICC1 = NA_real_, ICC2 = NA_real_))
-  }
-  
-  aov_obj <- aov(score ~ team, data = d)
-  aov_tab <- summary(aov_obj)[[1]]
-  
-  ms_between <- aov_tab["team", "Mean Sq"]
-  ms_within <- aov_tab["Residuals", "Mean Sq"]
-  
-  k <- d %>%
-    count(team) %>%
-    summarise(mean_n = mean(n), .groups = "drop") %>%
-    pull(mean_n)
-  
-  icc1 <- (ms_between - ms_within) / (ms_between + (k - 1) * ms_within)
-  icc2 <- (ms_between - ms_within) / ms_between
-  
-  tibble(ICC1 = icc1, ICC2 = icc2)
-}
-
-calc_rwg <- function(df, team_col, item_cols, scale_min = 1, scale_max = 7) {
-  d <- df %>%
-    select(all_of(team_col), all_of(item_cols)) %>%
-    filter(!is.na(.data[[team_col]]))
-  
-  expected_var <- ((scale_max - scale_min + 1)^2 - 1) / 12
-  
-  team_rwgs <- d %>%
-    group_by(.data[[team_col]]) %>%
-    group_modify(~ {
-      item_vars <- .x %>%
-        summarise(across(everything(), ~ var(.x, na.rm = TRUE))) %>%
-        unlist(use.names = FALSE)
-      
-      item_rwgs <- 1 - (item_vars / expected_var)
-      item_rwgs <- item_rwgs[is.finite(item_rwgs)]
-      
-      tibble(
-        rwg_j = ifelse(length(item_rwgs) == 0, NA_real_, mean(item_rwgs, na.rm = TRUE))
-      )
-    }) %>%
-    ungroup()
-  
-  tibble(
-    Median_rwgj = median(team_rwgs$rwg_j, na.rm = TRUE),
-    Mean_rwgj = mean(team_rwgs$rwg_j, na.rm = TRUE)
-  )
-}
-
-calc_alpha_omega <- function(df, item_cols) {
-  items <- df %>%
-    select(all_of(item_cols)) %>%
-    mutate(across(everything(), as.numeric))
-  
-  alpha_out <- tryCatch(
-    psych::alpha(items, warnings = FALSE, check.keys = FALSE),
-    error = function(e) NULL
-  )
-  
-  omega_out <- tryCatch(
-    suppressMessages(psych::omega(items, plot = FALSE, warnings = FALSE)),
-    error = function(e) NULL
-  )
-  
-  tibble(
-    Alpha = if (is.null(alpha_out)) NA_real_ else alpha_out$total$raw_alpha,
-    Omega = if (is.null(omega_out)) NA_real_ else omega_out$omega.tot
-  )
-}
 
 build_construct_stats <- function(
     df,
@@ -129,11 +36,11 @@ build_construct_stats <- function(
   df_wave <- df %>%
     filter(.data[[team_col]] %in% valid_teams) %>%
     mutate(composite = rowMeans(select(., all_of(item_cols)), na.rm = TRUE))
-  
+
   reliability <- calc_alpha_omega(df_wave, item_cols)
   iccs <- calc_icc(df_wave, team_col, "composite")
   rwg <- calc_rwg(df_wave, team_col, item_cols, scale_min = scale_min, scale_max = scale_max)
-  
+
   tibble(
     Variable = paste(wave_label, construct_label),
     ICC1 = round(iccs$ICC1, 2),
@@ -164,7 +71,7 @@ table2_rebuilt <- bind_rows(
       "Engagement_5_T3", "Engagement_6_T3", "Engagement_7_T3", "Engagement_8_T3", "Engagement_9_T3"),
     scale_min = 1, scale_max = 7
   ),
-  
+
   build_construct_stats(
     df_num, "T1", "TeamRef_T1", valid_t1_teams, "Control over work time",
     c("Choice_remote_work_T1", "Choice_work_week_T1", "Choice_vacations_T1", "Choice_in_office_T1", "Control_hrs_off_T1"),
@@ -180,7 +87,7 @@ table2_rebuilt <- bind_rows(
     c("Choice_remote_work_T3", "Choice_work_week_T3", "Choice_vacations_T3", "Choice_in_office_T3", "Control_hrs_off_T3"),
     scale_min = 1, scale_max = 5
   ),
-  
+
   build_construct_stats(
     df_num, "T1", "TeamRef_T1", valid_t1_teams, "Team psychological safety",
     c("RecodedPsychologicalsafety_1_T1", "Psychological_safety_2_T1", "RecodedPsychologicalSafety_3_T1",
@@ -203,6 +110,5 @@ table2_rebuilt <- bind_rows(
 
 print(table2_rebuilt, n = 20)
 
-dir.create("output/tables", recursive = TRUE, showWarnings = FALSE)
-write_csv(table2_rebuilt, "output/tables/table2_aggregation_reliability_rebuilt.csv")
-
+dir.create(here::here("output", "tables"), recursive = TRUE, showWarnings = FALSE)
+write_csv(table2_rebuilt, here::here("output", "tables", "table2_aggregation_reliability_rebuilt.csv"))

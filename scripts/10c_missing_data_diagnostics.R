@@ -1,22 +1,16 @@
-install.packages("naniar")
+# scripts/10c_missing_data_diagnostics.R
+# Missing data patterns and attrition prior to multilevel modelling. Computes
+# overall missingness, visualises missing data patterns (naniar) and conducts
+# logistic regression analyses to test whether dropout at T2 and T3 is
+# associated with baseline variables. Results support an MAR assumption and
+# justify the use of FIML in subsequent analyses.
 
+source(here::here("R", "utils.R"))
+write_session_log("10c_missing_data_diagnostics")
 
-library(tidyverse)
-library(haven)
 library(naniar)
 
-# -------------------------
-# LOAD DATA
-# -------------------------
-
-wide_df_raw <- readRDS("data_raw/wide_df_raw.rds")
-
-to_numeric_if_labelled <- function(x) {
-  if (inherits(x, "haven_labelled") || inherits(x, "labelled")) {
-    return(as.numeric(haven::zap_labels(x)))
-  }
-  x
-}
+wide_df_raw <- readRDS(here::here("data_raw", "wide_df_raw.rds"))
 
 df_num <- wide_df_raw %>%
   mutate(across(everything(), to_numeric_if_labelled))
@@ -36,7 +30,12 @@ print(missing_summary)
 # VISUALISE MISSINGNESS
 # -------------------------
 
-vis_miss(df_num)
+vis_miss_plot <- vis_miss(df_num)
+print(vis_miss_plot)
+
+dir.create(here::here("output", "figures"), recursive = TRUE, showWarnings = FALSE)
+ggsave(here::here("output", "figures", "missingness_vis_miss.png"),
+       vis_miss_plot, width = 10, height = 6, dpi = 200)
 
 # -------------------------
 # 2. CREATE DROPOUT VARIABLES
