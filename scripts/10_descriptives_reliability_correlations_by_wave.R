@@ -1,55 +1,13 @@
-library(tidyverse)
-library(haven)
+# scripts/10_descriptives_reliability_correlations_by_wave.R
+# Descriptive statistics, internal consistency (alpha, omega) and correlations
+# for the main T1-T2 panel sample used in hypothesis testing.
+
+source(here::here("R", "utils.R"))
+write_session_log("10_descriptives_reliability_correlations_by_wave")
+
 library(psych)
 
-wide_df_raw <- readRDS("data_raw/wide_df_raw.rds")
-
-to_numeric_if_labelled <- function(x) {
-  if (inherits(x, "haven_labelled") || inherits(x, "labelled")) {
-    return(as.numeric(haven::zap_labels(x)))
-  }
-  x
-}
-
-clean_team_id <- function(x) {
-  x <- as.character(x)
-  x <- stringr::str_trim(x)
-  x[x %in% c("", "NA", "NaN")] <- NA_character_
-  x
-}
-
-fmt_mean <- function(x, digits = 2) {
-  x <- x[!is.na(x)]
-  if (length(x) == 0) return(NA_character_)
-  sprintf(paste0("%.", digits, "f"), mean(x))
-}
-
-fmt_sd <- function(x, digits = 2) {
-  x <- x[!is.na(x)]
-  if (length(x) <= 1) return(NA_character_)
-  sprintf(paste0("%.", digits, "f"), sd(x))
-}
-
-calc_alpha_omega <- function(df, item_cols) {
-  items <- df %>%
-    select(all_of(item_cols)) %>%
-    mutate(across(everything(), as.numeric))
-  
-  alpha_out <- tryCatch(
-    psych::alpha(items, warnings = FALSE, check.keys = FALSE),
-    error = function(e) NULL
-  )
-  
-  omega_out <- tryCatch(
-    suppressMessages(psych::omega(items, plot = FALSE, warnings = FALSE)),
-    error = function(e) NULL
-  )
-  
-  tibble(
-    Alpha = if (is.null(alpha_out)) NA_real_ else alpha_out$total$raw_alpha,
-    Omega = if (is.null(omega_out)) NA_real_ else omega_out$omega.tot
-  )
-}
+wide_df_raw <- readRDS(here::here("data_raw", "wide_df_raw.rds"))
 
 df_num <- wide_df_raw %>%
   mutate(across(everything(), to_numeric_if_labelled)) %>%
@@ -58,14 +16,6 @@ df_num <- wide_df_raw %>%
     TeamRef_T2 = clean_team_id(TeamRef_T2),
     TeamRef_T3 = clean_team_id(TeamRef_T3)
   )
-
-get_valid_teams <- function(df, team_col) {
-  df %>%
-    filter(!is.na(.data[[team_col]])) %>%
-    count(.data[[team_col]], name = "team_size") %>%
-    filter(team_size >= 3) %>%
-    pull(1)
-}
 
 valid_t1_teams <- get_valid_teams(df_num, "TeamRef_T1")
 valid_t2_teams <- get_valid_teams(df_num, "TeamRef_T2")
@@ -213,7 +163,7 @@ reliability_main <- bind_rows(
       "Psychological_safety_7_T1"
     )
   ) %>% mutate(Variable = "T1 Team psychological safety"),
-  
+
   calc_alpha_omega(
     df_num_panel,
     c(
@@ -224,7 +174,7 @@ reliability_main <- bind_rows(
       "Control_hrs_off_T1"
     )
   ) %>% mutate(Variable = "T1 Control over work time"),
-  
+
   calc_alpha_omega(
     df_num_panel,
     c(
@@ -239,7 +189,7 @@ reliability_main <- bind_rows(
       "Disconnection_9_T1"
     )
   ) %>% mutate(Variable = "T1 Feeling disconnected"),
-  
+
   calc_alpha_omega(
     df_num_panel,
     c(
@@ -250,7 +200,7 @@ reliability_main <- bind_rows(
       "Connectionoverload_5_T1"
     )
   ) %>% mutate(Variable = "T1 Connection overload"),
-  
+
   calc_alpha_omega(
     df_num_panel,
     c(
@@ -265,7 +215,7 @@ reliability_main <- bind_rows(
       "Engagement_9_T1"
     )
   ) %>% mutate(Variable = "T1 Team work engagement"),
-  
+
   calc_alpha_omega(
     df_num_panel,
     c(
@@ -280,7 +230,7 @@ reliability_main <- bind_rows(
       "Engagement_9_T2"
     )
   ) %>% mutate(Variable = "T2 Team work engagement"),
-  
+
   calc_alpha_omega(
     df_num_panel,
     c(
@@ -290,7 +240,7 @@ reliability_main <- bind_rows(
       "Performance_4_T1"
     )
   ) %>% mutate(Variable = "T1 Team performance"),
-  
+
   calc_alpha_omega(
     df_num_panel,
     c(
@@ -370,19 +320,17 @@ print(model_sample_overview)
 print(descriptives_main, n = 20, width = Inf)
 print(as.data.frame(cor_matrix_main_round))
 
-dir.create("output/tables", recursive = TRUE, showWarnings = FALSE)
-write_csv(model_sample_overview, "output/tables/model_sample_overview_t1_t2.csv")
-write_csv(descriptives_main, "output/tables/descriptives_main_t1_t2.csv")
+dir.create(here::here("output", "tables"), recursive = TRUE, showWarnings = FALSE)
+write_csv(model_sample_overview, here::here("output", "tables", "model_sample_overview_t1_t2.csv"))
+write_csv(descriptives_main, here::here("output", "tables", "descriptives_main_t1_t2.csv"))
 write_csv(as.data.frame(cor_matrix_main_round) %>% rownames_to_column("Variable"),
-          "output/tables/correlations_main_t1_t2.csv")
-write_csv(table_main_corr, "output/tables/table_main_descriptives_correlations_t1_t2.csv")
+          here::here("output", "tables", "correlations_main_t1_t2.csv"))
+write_csv(table_main_corr, here::here("output", "tables", "table_main_descriptives_correlations_t1_t2.csv"))
 
 
 # =========================
 # CORRELATIONS WITH STARS
 # =========================
-
-library(psych)
 
 vars_for_corr <- model_data_t1_t2 %>%
   select(
@@ -441,4 +389,4 @@ table_main_corr <- descriptives_main %>%
 
 print(table_main_corr)
 
-write_csv(table_main_corr, "output/tables/table_main_descriptives_correlations_t1_t2_FINAL.csv")
+write_csv(table_main_corr, here::here("output", "tables", "table_main_descriptives_correlations_t1_t2_FINAL.csv"))

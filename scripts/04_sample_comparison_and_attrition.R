@@ -1,21 +1,10 @@
-library(tidyverse)
-library(haven)
+# scripts/04_sample_comparison_and_attrition.R
+# Compares full and analytic samples and summarises attrition across waves.
 
-wide_df_raw <- readRDS("data_raw/wide_df_raw.rds")
+source(here::here("R", "utils.R"))
+write_session_log("04_sample_comparison_and_attrition")
 
-to_numeric_if_labelled <- function(x) {
-  if (inherits(x, "haven_labelled") || inherits(x, "labelled")) {
-    return(as.numeric(haven::zap_labels(x)))
-  }
-  x
-}
-
-clean_team_id <- function(x) {
-  x <- as.character(x)
-  x <- stringr::str_trim(x)
-  x[x %in% c("", "NA", "NaN")] <- NA_character_
-  x
-}
+wide_df_raw <- readRDS(here::here("data_raw", "wide_df_raw.rds"))
 
 df_num <- wide_df_raw %>%
   mutate(across(everything(), to_numeric_if_labelled)) %>%
@@ -25,24 +14,9 @@ df_num <- wide_df_raw %>%
     TeamRef_T3 = clean_team_id(TeamRef_T3)
   )
 
-team_size_by_wave <- bind_rows(
-  df_num %>%
-    filter(!is.na(TeamRef_T1)) %>%
-    count(team_id = TeamRef_T1, name = "team_size") %>%
-    mutate(wave = "T1"),
-  df_num %>%
-    filter(!is.na(TeamRef_T2)) %>%
-    count(team_id = TeamRef_T2, name = "team_size") %>%
-    mutate(wave = "T2"),
-  df_num %>%
-    filter(!is.na(TeamRef_T3)) %>%
-    count(team_id = TeamRef_T3, name = "team_size") %>%
-    mutate(wave = "T3")
-)
-
-valid_t1_teams <- team_size_by_wave %>% filter(wave == "T1", team_size >= 3) %>% pull(team_id)
-valid_t2_teams <- team_size_by_wave %>% filter(wave == "T2", team_size >= 3) %>% pull(team_id)
-valid_t3_teams <- team_size_by_wave %>% filter(wave == "T3", team_size >= 3) %>% pull(team_id)
+valid_t1_teams <- get_valid_teams(df_num, "TeamRef_T1")
+valid_t2_teams <- get_valid_teams(df_num, "TeamRef_T2")
+valid_t3_teams <- get_valid_teams(df_num, "TeamRef_T3")
 
 full_by_wave <- tibble(
   wave = c("T1", "T2", "T3"),
@@ -130,10 +104,10 @@ print(participant_retention_analytic)
 print(team_retention_full)
 print(team_retention_analytic)
 
-dir.create("output/tables", recursive = TRUE, showWarnings = FALSE)
+dir.create(here::here("output", "tables"), recursive = TRUE, showWarnings = FALSE)
 
-write_csv(sample_comparison, "output/tables/sample_comparison_full_vs_analytic.csv")
-write_csv(participant_retention_full, "output/tables/participant_retention_full.csv")
-write_csv(participant_retention_analytic, "output/tables/participant_retention_analytic.csv")
-write_csv(team_retention_full, "output/tables/team_retention_full.csv")
-write_csv(team_retention_analytic, "output/tables/team_retention_analytic.csv")
+write_csv(sample_comparison, here::here("output", "tables", "sample_comparison_full_vs_analytic.csv"))
+write_csv(participant_retention_full, here::here("output", "tables", "participant_retention_full.csv"))
+write_csv(participant_retention_analytic, here::here("output", "tables", "participant_retention_analytic.csv"))
+write_csv(team_retention_full, here::here("output", "tables", "team_retention_full.csv"))
+write_csv(team_retention_analytic, here::here("output", "tables", "team_retention_analytic.csv"))
