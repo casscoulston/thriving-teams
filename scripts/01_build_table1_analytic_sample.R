@@ -1,50 +1,10 @@
-library(tidyverse)
-library(haven)
+# scripts/01_build_table1_analytic_sample.R
+# Builds Table 1 sample characteristics by wave for the analytic sample.
 
-wide_df_raw <- readRDS("data_raw/wide_df_raw.rds")
+source(here::here("R", "utils.R"))
+write_session_log("01_build_table1_analytic_sample")
 
-to_numeric_if_labelled <- function(x) {
-  if (inherits(x, "haven_labelled") || inherits(x, "labelled")) {
-    return(as.numeric(haven::zap_labels(x)))
-  }
-  x
-}
-
-to_character_if_labelled <- function(x) {
-  if (inherits(x, "haven_labelled") || inherits(x, "labelled")) {
-    return(as.character(haven::as_factor(x)))
-  }
-  x
-}
-
-clean_team_id <- function(x) {
-  x <- as.character(x)
-  x <- str_trim(x)
-  x[x %in% c("", "NA", "NaN")] <- NA_character_
-  x
-}
-
-fmt_mean_sd <- function(x, digits = 2) {
-  x <- x[!is.na(x)]
-  if (length(x) == 0) return(NA_character_)
-  sprintf(paste0("%.", digits, "f (%.", digits, "f)"), mean(x), sd(x))
-}
-
-fmt_range <- function(x) {
-  x <- x[!is.na(x)]
-  if (length(x) == 0) return(NA_character_)
-  paste0(min(x), "–", max(x))
-}
-
-pct_level <- function(x, level) {
-  denom <- sum(!is.na(x) & x != "")
-  if (denom == 0) return(NA_real_)
-  100 * sum(x == level, na.rm = TRUE) / denom
-}
-
-count_industries <- function(x) {
-  n_distinct(x[!is.na(x) & x != ""])
-}
+wide_df_raw <- readRDS(here::here("data_raw", "wide_df_raw.rds"))
 
 df_num <- wide_df_raw %>%
   mutate(across(everything(), to_numeric_if_labelled)) %>%
@@ -71,40 +31,17 @@ df_chr <- wide_df_raw %>%
     TeamRef_T3 = clean_team_id(TeamRef_T3)
   )
 
-team_size_by_wave <- bind_rows(
-  df_num %>%
-    filter(!is.na(TeamRef_T1)) %>%
-    count(team_id = TeamRef_T1, name = "team_size") %>%
-    mutate(wave = "T1"),
-  df_num %>%
-    filter(!is.na(TeamRef_T2)) %>%
-    count(team_id = TeamRef_T2, name = "team_size") %>%
-    mutate(wave = "T2"),
-  df_num %>%
-    filter(!is.na(TeamRef_T3)) %>%
-    count(team_id = TeamRef_T3, name = "team_size") %>%
-    mutate(wave = "T3")
-)
-
-valid_t1_teams <- team_size_by_wave %>%
-  filter(wave == "T1", team_size >= 3) %>%
-  pull(team_id)
-
-valid_t2_teams <- team_size_by_wave %>%
-  filter(wave == "T2", team_size >= 3) %>%
-  pull(team_id)
-
-valid_t3_teams <- team_size_by_wave %>%
-  filter(wave == "T3", team_size >= 3) %>%
-  pull(team_id)
+valid_t1_teams <- get_valid_teams(df_num, "TeamRef_T1")
+valid_t2_teams <- get_valid_teams(df_num, "TeamRef_T2")
+valid_t3_teams <- get_valid_teams(df_num, "TeamRef_T3")
 
 build_wave_table1 <- function(wave, team_col, role_num_col, age_col, gender_col, remote_col, tenure_col, industry_col, valid_teams) {
   keep <- df_num[[team_col]] %in% valid_teams
-  
+
   team_sizes <- df_num %>%
     filter(keep, !is.na(.data[[team_col]])) %>%
     count(.data[[team_col]], name = "team_size")
-  
+
   tibble(
     wave = wave,
     total_respondents = sum(keep, na.rm = TRUE),
@@ -164,8 +101,8 @@ table1_analytic_long <- tribble(
   ) %>%
   select(-var)
 
-dir.create("output/tables", recursive = TRUE, showWarnings = FALSE)
-write_csv(table1_analytic_long, "output/tables/table1_analytic_sample_by_wave.csv")
+dir.create(here::here("output", "tables"), recursive = TRUE, showWarnings = FALSE)
+write_csv(table1_analytic_long, here::here("output", "tables", "table1_analytic_sample_by_wave.csv"))
 
 print(table1_analytic)
 print(table1_analytic_long)

@@ -1,73 +1,11 @@
 # scripts/05_compare_full_vs_analytic_and_attrition_bias.R
+# Tests whether the analytic sample differs from the full sample
+# and assesses attrition bias on baseline characteristics.
 
-suppressPackageStartupMessages({
-  library(tidyverse)
-  library(haven)
-})
+source(here::here("R", "utils.R"))
+write_session_log("05_compare_full_vs_analytic_and_attrition_bias")
 
-wide_df_raw <- readRDS("data_raw/wide_df_raw.rds")
-
-to_numeric_if_labelled <- function(x) {
-  if (inherits(x, "haven_labelled") || inherits(x, "labelled")) {
-    return(as.numeric(haven::zap_labels(x)))
-  }
-  x
-}
-
-to_character_if_labelled <- function(x) {
-  if (inherits(x, "haven_labelled") || inherits(x, "labelled")) {
-    return(as.character(haven::as_factor(x)))
-  }
-  x
-}
-
-clean_team_id <- function(x) {
-  x <- as.character(x)
-  x <- stringr::str_trim(x)
-  x[x %in% c("", "NA", "NaN")] <- NA_character_
-  x
-}
-
-fmt_mean_sd <- function(x, digits = 2) {
-  x <- x[!is.na(x)]
-  if (length(x) == 0) return(NA_character_)
-  sprintf(paste0("%.", digits, "f (%.", digits, "f)"), mean(x), sd(x))
-}
-
-safe_t_test <- function(x, g) {
-  keep <- !is.na(x) & !is.na(g)
-  x <- x[keep]
-  g <- g[keep]
-  if (length(unique(g)) != 2 || length(x) < 3) {
-    return(tibble(statistic = NA_real_, p_value = NA_real_))
-  }
-  out <- tryCatch(t.test(x ~ g), error = function(e) NULL)
-  if (is.null(out)) {
-    return(tibble(statistic = NA_real_, p_value = NA_real_))
-  }
-  tibble(statistic = unname(out$statistic), p_value = out$p.value)
-}
-
-safe_chisq <- function(x, g) {
-  keep <- !is.na(x) & !is.na(g) & x != ""
-  x <- x[keep]
-  g <- g[keep]
-  if (length(unique(g)) != 2 || length(unique(x)) < 2) {
-    return(tibble(statistic = NA_real_, p_value = NA_real_))
-  }
-  tab <- table(x, g)
-  out <- tryCatch(chisq.test(tab), error = function(e) NULL)
-  if (is.null(out)) {
-    return(tibble(statistic = NA_real_, p_value = NA_real_))
-  }
-  tibble(statistic = unname(out$statistic), p_value = out$p.value)
-}
-
-pct_level <- function(x, level) {
-  denom <- sum(!is.na(x) & x != "")
-  if (denom == 0) return(NA_real_)
-  100 * sum(x == level, na.rm = TRUE) / denom
-}
+wide_df_raw <- readRDS(here::here("data_raw", "wide_df_raw.rds"))
 
 df_num <- wide_df_raw %>%
   mutate(across(everything(), to_numeric_if_labelled)) %>%
@@ -94,24 +32,9 @@ df_chr <- wide_df_raw %>%
     TeamRef_T3 = clean_team_id(TeamRef_T3)
   )
 
-team_size_by_wave <- bind_rows(
-  df_num %>%
-    filter(!is.na(TeamRef_T1)) %>%
-    count(team_id = TeamRef_T1, name = "team_size") %>%
-    mutate(wave = "T1"),
-  df_num %>%
-    filter(!is.na(TeamRef_T2)) %>%
-    count(team_id = TeamRef_T2, name = "team_size") %>%
-    mutate(wave = "T2"),
-  df_num %>%
-    filter(!is.na(TeamRef_T3)) %>%
-    count(team_id = TeamRef_T3, name = "team_size") %>%
-    mutate(wave = "T3")
-)
-
-valid_t1_teams <- team_size_by_wave %>% filter(wave == "T1", team_size >= 3) %>% pull(team_id)
-valid_t2_teams <- team_size_by_wave %>% filter(wave == "T2", team_size >= 3) %>% pull(team_id)
-valid_t3_teams <- team_size_by_wave %>% filter(wave == "T3", team_size >= 3) %>% pull(team_id)
+valid_t1_teams <- get_valid_teams(df_num, "TeamRef_T1")
+valid_t2_teams <- get_valid_teams(df_num, "TeamRef_T2")
+valid_t3_teams <- get_valid_teams(df_num, "TeamRef_T3")
 
 build_full_vs_analytic_wave <- function(
     wave,
@@ -126,7 +49,7 @@ build_full_vs_analytic_wave <- function(
 ) {
   full_keep <- !is.na(df_num[[team_col]])
   analytic_keep <- df_num[[team_col]] %in% valid_teams
-  
+
   desc <- tibble(
     wave = wave,
     sample = c("Full", "Analytic"),
@@ -160,24 +83,24 @@ build_full_vs_analytic_wave <- function(
       fmt_mean_sd(df_num[[tenure_col]][analytic_keep])
     )
   )
-  
+
   group_indicator <- ifelse(analytic_keep, "Analytic", ifelse(full_keep, "Full_only", NA_character_))
   compare_group <- ifelse(group_indicator == "Analytic", "Analytic", ifelse(group_indicator == "Full_only", "Full_only", NA_character_))
-  
+
   tests_num <- bind_rows(
     safe_t_test(df_num[[age_col]], compare_group) %>% mutate(variable = "Age"),
     safe_t_test(df_num[[remote_col]], compare_group) %>% mutate(variable = "Remote days"),
     safe_t_test(df_num[[tenure_col]], compare_group) %>% mutate(variable = "Team tenure")
   ) %>%
     mutate(wave = wave, test = "t_test", .before = 1)
-  
+
   role_comp <- ifelse(df_num[[role_num_col]] == 1, "Team leader", ifelse(df_num[[role_num_col]] == 2, "Team member", NA_character_))
   tests_cat <- bind_rows(
     safe_chisq(role_comp, compare_group) %>% mutate(variable = "Role composition"),
     safe_chisq(df_chr[[gender_col]], compare_group) %>% mutate(variable = "Gender")
   ) %>%
     mutate(wave = wave, test = "chi_square", .before = 1)
-  
+
   list(desc = desc, tests = bind_rows(tests_num, tests_cat))
 }
 
@@ -258,7 +181,7 @@ attrition_bias_tests <- bind_rows(
   safe_t_test(attrition_bias_t1_t2$tenure_T1, attrition_bias_t1_t2$retained_T2) %>% mutate(comparison = "T2 retention", variable = "Team tenure at T1"),
   safe_chisq(attrition_bias_t1_t2$role_T1, attrition_bias_t1_t2$retained_T2) %>% mutate(comparison = "T2 retention", variable = "Role at T1"),
   safe_chisq(attrition_bias_t1_t2$gender_T1, attrition_bias_t1_t2$retained_T2) %>% mutate(comparison = "T2 retention", variable = "Gender at T1"),
-  
+
   safe_t_test(attrition_bias_t1_t3$age_T1, attrition_bias_t1_t3$retained_T3) %>% mutate(comparison = "T3 retention", variable = "Age at T1"),
   safe_t_test(attrition_bias_t1_t3$remote_T1, attrition_bias_t1_t3$retained_T3) %>% mutate(comparison = "T3 retention", variable = "Remote days at T1"),
   safe_t_test(attrition_bias_t1_t3$tenure_T1, attrition_bias_t1_t3$retained_T3) %>% mutate(comparison = "T3 retention", variable = "Team tenure at T1"),
@@ -267,12 +190,12 @@ attrition_bias_tests <- bind_rows(
 ) %>%
   select(comparison, variable, statistic, p_value)
 
-dir.create("output/tables", recursive = TRUE, showWarnings = FALSE)
+dir.create(here::here("output", "tables"), recursive = TRUE, showWarnings = FALSE)
 
-write_csv(full_vs_analytic_desc, "output/tables/full_vs_analytic_characteristics.csv")
-write_csv(full_vs_analytic_tests, "output/tables/full_vs_analytic_tests.csv")
-write_csv(industry_full_vs_analytic, "output/tables/industry_full_vs_analytic.csv")
-write_csv(attrition_bias_tests, "output/tables/attrition_bias_tests.csv")
+write_csv(full_vs_analytic_desc, here::here("output", "tables", "full_vs_analytic_characteristics.csv"))
+write_csv(full_vs_analytic_tests, here::here("output", "tables", "full_vs_analytic_tests.csv"))
+write_csv(industry_full_vs_analytic, here::here("output", "tables", "industry_full_vs_analytic.csv"))
+write_csv(attrition_bias_tests, here::here("output", "tables", "attrition_bias_tests.csv"))
 
 print(full_vs_analytic_desc, n = 20)
 print(full_vs_analytic_tests, n = 50)

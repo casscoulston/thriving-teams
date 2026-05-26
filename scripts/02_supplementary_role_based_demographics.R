@@ -1,34 +1,10 @@
-library(tidyverse)
-library(haven)
+# scripts/02_supplementary_role_based_demographics.R
+# Role-based descriptive statistics by wave.
 
-wide_df_raw <- readRDS("data_raw/wide_df_raw.rds")
+source(here::here("R", "utils.R"))
+write_session_log("02_supplementary_role_based_demographics")
 
-to_numeric_if_labelled <- function(x) {
-  if (inherits(x, "haven_labelled") || inherits(x, "labelled")) {
-    return(as.numeric(haven::zap_labels(x)))
-  }
-  x
-}
-
-to_character_if_labelled <- function(x) {
-  if (inherits(x, "haven_labelled") || inherits(x, "labelled")) {
-    return(as.character(haven::as_factor(x)))
-  }
-  x
-}
-
-clean_team_id <- function(x) {
-  x <- as.character(x)
-  x <- stringr::str_trim(x)
-  x[x %in% c("", "NA", "NaN")] <- NA_character_
-  x
-}
-
-fmt_mean_sd <- function(x, digits = 2) {
-  x <- x[!is.na(x)]
-  if (length(x) == 0) return(NA_character_)
-  sprintf(paste0("%.", digits, "f (%.", digits, "f)"), mean(x), sd(x))
-}
+wide_df_raw <- readRDS(here::here("data_raw", "wide_df_raw.rds"))
 
 df_num <- wide_df_raw %>%
   mutate(across(everything(), to_numeric_if_labelled)) %>%
@@ -47,24 +23,9 @@ df_num <- wide_df_raw %>%
     Remoteworkingdays_T3_days = Remoteworkingdays_T3 - 1
   )
 
-team_size_by_wave <- bind_rows(
-  df_num %>%
-    filter(!is.na(TeamRef_T1)) %>%
-    count(team_id = TeamRef_T1, name = "team_size") %>%
-    mutate(wave = "T1"),
-  df_num %>%
-    filter(!is.na(TeamRef_T2)) %>%
-    count(team_id = TeamRef_T2, name = "team_size") %>%
-    mutate(wave = "T2"),
-  df_num %>%
-    filter(!is.na(TeamRef_T3)) %>%
-    count(team_id = TeamRef_T3, name = "team_size") %>%
-    mutate(wave = "T3")
-)
-
-valid_t1_teams <- team_size_by_wave %>% filter(wave == "T1", team_size >= 3) %>% pull(team_id)
-valid_t2_teams <- team_size_by_wave %>% filter(wave == "T2", team_size >= 3) %>% pull(team_id)
-valid_t3_teams <- team_size_by_wave %>% filter(wave == "T3", team_size >= 3) %>% pull(team_id)
+valid_t1_teams <- get_valid_teams(df_num, "TeamRef_T1")
+valid_t2_teams <- get_valid_teams(df_num, "TeamRef_T2")
+valid_t3_teams <- get_valid_teams(df_num, "TeamRef_T3")
 
 build_role_wave_summary <- function(wave, team_col, role_col, age_col, remote_col, tenure_col, valid_teams) {
   tibble(
@@ -89,8 +50,5 @@ supp_role_table <- bind_rows(
 
 print(supp_role_table, n = 20)
 
-dir.create("output/tables", recursive = TRUE, showWarnings = FALSE)
-write_csv(supp_role_table, "output/tables/supplementary_role_based_demographics.csv")
-
-
-
+dir.create(here::here("output", "tables"), recursive = TRUE, showWarnings = FALSE)
+write_csv(supp_role_table, here::here("output", "tables", "supplementary_role_based_demographics.csv"))

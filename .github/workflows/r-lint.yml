@@ -1,0 +1,67 @@
+name: R parse and lint
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  parse-and-lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.4.2'
+
+      - name: Set up R package cache
+        uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          packages: |
+            any::lintr
+            any::styler
+
+      - name: Parse every R script (catch syntax errors)
+        run: |
+          Rscript -e '
+            scripts <- list.files(c("scripts", "R"), pattern = "\\.R$",
+                                  recursive = TRUE, full.names = TRUE)
+            errs <- character()
+            for (f in scripts) {
+              cat("parse:", f, "\n")
+              ok <- tryCatch({
+                parse(file = f)
+                TRUE
+              }, error = function(e) {
+                message("FAIL: ", f, "\n  ", conditionMessage(e))
+                FALSE
+              })
+              if (!ok) errs <- c(errs, f)
+            }
+            if (length(errs)) stop("Parse failures: ", paste(errs, collapse = ", "))
+          '
+
+      - name: Lint with sensible defaults
+        run: |
+          Rscript -e '
+            library(lintr)
+            scripts <- list.files(c("scripts", "R"), pattern = "\\.R$",
+                                  recursive = TRUE, full.names = TRUE)
+            linters_used <- linters_with_defaults(
+              line_length_linter   = line_length_linter(120),
+              object_name_linter   = NULL,    # tolerate snake_case + PascalCase mix
+              commented_code_linter = NULL,   # comments often contain code references
+              cyclocomp_linter     = NULL     # composite-builder functions are intentionally long
+            )
+            res <- lapply(scripts, lint, linters = linters_used)
+            n_issues <- sum(vapply(res, length, integer(1)))
+            cat("Total lint findings:", n_issues, "\n")
+            # Soft-fail at the moment so the workflow surfaces findings without
+            # blocking merges; switch to hard-fail once the baseline is clean.
+            for (r in res) print(r)
+          '
