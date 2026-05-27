@@ -64,9 +64,18 @@ Raw data are not included in this repository due to confidentiality and ethics r
 - `scripts/10c_missing_data_diagnostics.R`  
      Examines missing data patterns and attrition prior to multilevel modelling. Computes overall missingness, visualises missing data patterns (naniar), and conducts logistic regression analyses to test whether dropout at T2 and T3 is associated with baseline variables (feeling disconnected, connection overload, and team work engagement). Results support a missing at random (MAR) assumption and justify the use of full information maximum likelihood (FIML) in subsequent analyses.
   
+###  Main multilevel analyses
+- `scripts/11_main_modesl_outputs.R`  
+  Estimates multilevel models testing whether relational demands (feeling disconnected, connection overload) and resources (psychological safety, control over work time) at T1 predict team work engagement and team performance at T2. Variables are group-mean (CWC) and grand-mean (CGM) centred as appropriate. Models include random intercepts for teams (TeamRef_T1) and control for baseline outcomes and team tenure. Results form the main analyses reported in the paper
+
+- `scripts/12_mediation_stress.R`  
+   Tests a multilevel mediation model examining whether psychological strain (stress) at T2 mediates the relationship between relational demands at T1 (feeling disconnected, connection overload) and team performance at T2. Models include baseline controls (stress T1, performance T1, team tenure) and random intercepts for teams. Results indicate a partial indirect effect for feeling disconnected, but not for connection overload
+
+- `scripts/13_mediation_engagement.R`  
+  Tests a multilevel mediation model examining whether team work engagement at T2 mediates the relationship between relational demands/resources at T1 and team performance at T2. Models include baseline controls and random intercepts for teams. Although engagement is positively associated with performance, no consistent indirect effects are observed. This analysis is conducted for completeness but is not included in the main paper.
+  
 ### Next planned section
-- Main multilevel analyses
-- Supplementary robustness analyses
+- Supplementary robustness analyses T1-T3
 
 ## Analytic sample rule
 
