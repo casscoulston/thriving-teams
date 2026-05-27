@@ -85,7 +85,6 @@ model_full_engage <- lmer(
     team_tenure +
     (1 | TeamRef_T1),
   data = model_data
-)
 
 # =========================
 # OUTPUT
