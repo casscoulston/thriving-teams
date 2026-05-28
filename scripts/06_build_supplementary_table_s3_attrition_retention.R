@@ -1,10 +1,11 @@
-install.packages(c("officer", "flextable"))
-library(officer)
-library(flextable)
-
-library(tidyverse)
-library(officer)
-library(flextable)
+# Load required libraries with checks
+required_packages <- c("officer", "flextable", "tidyverse")
+lapply(required_packages, function(pkg) {
+  if (!requireNamespace(pkg, quietly = TRUE)) {
+    install.packages(pkg)
+  }
+  library(pkg, character.only = TRUE)
+})
 
 sample_by_wave <- tibble(
   Characteristic = c(

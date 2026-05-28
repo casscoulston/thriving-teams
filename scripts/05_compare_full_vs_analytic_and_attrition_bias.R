@@ -1,8 +1,12 @@
 # scripts/05_compare_full_vs_analytic_and_attrition_bias.R
 
-suppressPackageStartupMessages({
-  library(tidyverse)
-  library(haven)
+# Load required libraries with checks
+required_packages <- c("tidyverse", "haven")
+lapply(required_packages, function(pkg) {
+  if (!requireNamespace(pkg, quietly = TRUE)) {
+    install.packages(pkg)
+  }
+  library(pkg, character.only = TRUE)
 })
 
 wide_df_raw <- readRDS("data_raw/wide_df_raw.rds")

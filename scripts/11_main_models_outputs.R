@@ -4,9 +4,14 @@
 # LOAD LIBRARIES
 # -------------------------
 
-library(tidyverse)
-library(lme4)
-library(lmerTest)
+# Load required libraries with checks
+required_packages <- c("tidyverse", "lme4", "lmerTest")
+lapply(required_packages, function(pkg) {
+  if (!requireNamespace(pkg, quietly = TRUE)) {
+    install.packages(pkg)
+  }
+  library(pkg, character.only = TRUE)
+})
 
 # -------------------------
 # LOAD CLEAN DATA

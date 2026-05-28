@@ -2,9 +2,14 @@
 # SCRIPT 13: MEDIATION (ENGAGEMENT)
 # ==========================================
 
-library(lme4)
-library(lmerTest)
-library(dplyr)
+# Load required libraries with checks
+required_packages <- c("lme4", "lmerTest", "dplyr")
+lapply(required_packages, function(pkg) {
+  if (!requireNamespace(pkg, quietly = TRUE)) {
+    install.packages(pkg)
+  }
+  library(pkg, character.only = TRUE)
+})
 
 # =========================
 # LOAD DATA

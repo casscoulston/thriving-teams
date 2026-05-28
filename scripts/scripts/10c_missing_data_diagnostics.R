@@ -1,9 +1,11 @@
-install.packages("naniar")
-
-
-library(tidyverse)
-library(haven)
-library(naniar)
+# Load required libraries with checks
+required_packages <- c("tidyverse", "haven", "naniar")
+lapply(required_packages, function(pkg) {
+  if (!requireNamespace(pkg, quietly = TRUE)) {
+    install.packages(pkg)
+  }
+  library(pkg, character.only = TRUE)
+})
 
 # -------------------------
 # LOAD DATA

@@ -1,6 +1,11 @@
-library(tidyverse)
-library(haven)
-library(psych)
+# Load required libraries with checks
+required_packages <- c("tidyverse", "haven", "psych")
+lapply(required_packages, function(pkg) {
+  if (!requireNamespace(pkg, quietly = TRUE)) {
+    install.packages(pkg)
+  }
+  library(pkg, character.only = TRUE)
+})
 
 # -------------------------
 # LOAD DATA
