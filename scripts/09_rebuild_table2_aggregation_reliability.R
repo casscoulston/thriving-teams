@@ -1,6 +1,5 @@
-install.packages("psych")
-
-install.packages("multilevel")
+# install.packages("psych")
+# install.packages("multilevel")
 
 library(tidyverse)
 library(haven)
@@ -75,8 +74,11 @@ calc_icc <- function(df, team_col, score_col) {
     summarise(mean_n = mean(n), .groups = "drop") %>%
     pull(mean_n)
   
-  icc1 <- (ms_between - ms_within) / (ms_between + (k - 1) * ms_within)
-  icc2 <- (ms_between - ms_within) / ms_between
+  icc1 <- (ms_between - ms_within) /
+    (ms_between + (k - 1) * ms_within)
+  
+  icc2 <- (ms_between - ms_within) /
+    ms_between
   
   tibble(ICC1 = icc1, ICC2 = icc2)
 }
@@ -117,13 +119,24 @@ calc_alpha_omega <- function(df, item_cols) {
   )
   
   omega_out <- tryCatch(
-    suppressMessages(psych::omega(items, plot = FALSE, warnings = FALSE)),
+    suppressMessages(
+      psych::omega(items, plot = FALSE, warnings = FALSE)
+    ),
     error = function(e) NULL
   )
   
   tibble(
-    Alpha = if (is.null(alpha_out)) NA_real_ else alpha_out$total$raw_alpha,
-    Omega = if (is.null(omega_out)) NA_real_ else omega_out$omega.tot
+    Alpha = if (is.null(alpha_out)) {
+      NA_real_
+    } else {
+      alpha_out$total$raw_alpha
+    },
+    
+    Omega = if (is.null(omega_out)) {
+      NA_real_
+    } else {
+      omega_out$omega.tot
+    }
   )
 }
 
@@ -171,6 +184,8 @@ build_construct_stats <- function(
   
   tibble(
     Variable = paste(wave_label, construct_label),
+    N_respondents = nrow(df_wave),
+    N_teams = dplyr::n_distinct(df_wave[[team_col]]),
     ICC1 = round(iccs$ICC1, 2),
     ICC2 = round(iccs$ICC2, 2),
     Median_rwgj = round(rwg$Median_rwgj, 2),
@@ -231,7 +246,11 @@ table2_rebuilt <- bind_rows(
 
 print(table2_rebuilt, n = 20)
 
-dir.create("output/tables", recursive = TRUE, showWarnings = FALSE)
+dir.create(
+  "output/tables",
+  recursive = TRUE,
+  showWarnings = FALSE
+)
 
 write_csv(
   table2_rebuilt,
