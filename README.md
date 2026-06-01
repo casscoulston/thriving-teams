@@ -71,8 +71,8 @@ Raw data are not included in this repository due to confidentiality and ethics r
 - `scripts/12_exploratory_stress_pathway.R`  
    Examines occupational stress as a potential strain-related pathway linking hybrid-work demands and resources to perceived team performance. Tests whether Time 1 demands and resources predict Time 2 occupational stress after accounting for baseline stress, and whether Time 2 stress is associated with Time 2 performance after controlling for prior performance. 
 
-- `scripts/13_mediation_engagement.R`  
-  Tests a multilevel mediation model examining whether team work engagement at T2 mediates the relationship between relational demands/resources at T1 and team performance at T2. Models include baseline controls and random intercepts for teams. Although engagement is positively associated with performance, no consistent indirect effects are observed. This analysis is conducted for completeness but is not included in the main paper.
+- `scripts/13_exploratory_stress_model.R`  
+  This is work in progress still 
   
 ### Next planned section
 - Supplementary robustness analyses T1-T3
