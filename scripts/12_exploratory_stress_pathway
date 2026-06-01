@@ -1,0 +1,327 @@
+
+# ============================================================
+# SCRIPT 12: EXPLORATORY STRESS PATHWAY
+# ============================================================
+# -------------------------
+# LOAD LIBRARIES
+# -------------------------
+
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+library(performance)
+library(sjPlot)
+
+# -------------------------
+# LOAD CORRECTED DATASET
+# -------------------------
+
+model_data <- readRDS(
+  "data_processed/model_data_with_centered_demands.rds"
+)
+
+# -------------------------
+# CHECK REQUIRED VARIABLES
+# -------------------------
+
+required_vars <- c(
+  "TeamRef_T1",
+  "stress_t1",
+  "stress_t2",
+  "t1_team_performance",
+  "t2_team_performance",
+  "psych_safety_cgm",
+  "control_cgm",
+  "disconnected_cwc",
+  "overload_cwc",
+  "team_tenure"
+)
+
+missing_vars <- setdiff(
+  required_vars,
+  names(model_data)
+)
+
+if (length(missing_vars) > 0) {
+  stop(
+    paste(
+      "Missing required variables:",
+      paste(missing_vars, collapse = ", ")
+    )
+  )
+}
+
+# -------------------------
+# CREATE COMMON ANALYTIC SAMPLE
+# -------------------------
+#
+# Use the same complete-observation sample across all models.
+# Reapply the >= 3 usable respondents per team rule.
+
+strain_data <- model_data %>%
+  filter(
+    if_all(
+      all_of(required_vars),
+      ~ !is.na(.)
+    )
+  ) %>%
+  group_by(
+    TeamRef_T1
+  ) %>%
+  filter(
+    n() >= 3
+  ) %>%
+  ungroup()
+
+# -------------------------
+# SAMPLE OVERVIEW
+# -------------------------
+
+strain_sample_summary <- tibble(
+  Analysis = "Exploratory stress pathway",
+  Respondents = nrow(strain_data),
+  Teams = n_distinct(strain_data$TeamRef_T1)
+)
+
+print(
+  strain_sample_summary
+)
+
+# -------------------------
+# MODEL 1:
+# T1 PREDICTORS -> T2 STRESS
+# -------------------------
+#
+# Tests whether resources and demands predict subsequent stress,
+# controlling for baseline stress.
+
+model_strain <- lmer(
+  stress_t2 ~
+    stress_t1 +
+    disconnected_cwc +
+    overload_cwc +
+    psych_safety_cgm +
+    control_cgm +
+    team_tenure +
+    (1 | TeamRef_T1),
+  data = strain_data,
+  REML = TRUE
+)
+
+# -------------------------
+# MODEL 2:
+# PERFORMANCE WITHOUT T2 STRESS
+# -------------------------
+#
+# Comparison model before stress is added.
+
+model_perf_without_stress <- lmer(
+  t2_team_performance ~
+    t1_team_performance +
+    disconnected_cwc +
+    overload_cwc +
+    psych_safety_cgm +
+    control_cgm +
+    team_tenure +
+    (1 | TeamRef_T1),
+  data = strain_data,
+  REML = TRUE
+)
+
+# -------------------------
+# MODEL 3:
+# PERFORMANCE WITH T2 STRESS
+# -------------------------
+#
+# Tests whether T2 stress is associated with T2 performance
+# after accounting for baseline performance, demands,
+# resources, and team tenure.
+
+model_perf_with_stress <- lmer(
+  t2_team_performance ~
+    stress_t2 +
+    t1_team_performance +
+    disconnected_cwc +
+    overload_cwc +
+    psych_safety_cgm +
+    control_cgm +
+    team_tenure +
+    (1 | TeamRef_T1),
+  data = strain_data,
+  REML = TRUE
+)
+
+# -------------------------
+# PRINT MODEL SUMMARIES
+# -------------------------
+
+summary(
+  model_strain
+)
+
+summary(
+  model_perf_without_stress
+)
+
+summary(
+  model_perf_with_stress
+)
+
+# -------------------------
+# EXTRACT COEFFICIENT TABLE
+# -------------------------
+
+extract_fixed_effects <- function(model, model_name) {
+  
+  summary(model)$coefficients %>%
+    as.data.frame() %>%
+    rownames_to_column(
+      "Predictor"
+    ) %>%
+    as_tibble() %>%
+    transmute(
+      Model = model_name,
+      Predictor = Predictor,
+      b = Estimate,
+      SE = `Std. Error`,
+      df = df,
+      t = `t value`,
+      p = `Pr(>|t|)`
+    )
+}
+
+strain_results <- bind_rows(
+  extract_fixed_effects(
+    model_strain,
+    "T2 occupational stress"
+  ),
+  
+  extract_fixed_effects(
+    model_perf_without_stress,
+    "T2 performance without stress"
+  ),
+  
+  extract_fixed_effects(
+    model_perf_with_stress,
+    "T2 performance with stress"
+  )
+)
+
+print(
+  strain_results,
+  n = 50,
+  width = Inf
+)
+
+# -------------------------
+# CALCULATE R-SQUARED VALUES
+# -------------------------
+
+strain_r2_results <- bind_rows(
+  tibble(
+    Model = "T2 occupational stress",
+    as.data.frame(
+      performance::r2_nakagawa(
+        model_strain
+      )
+    )
+  ),
+  
+  tibble(
+    Model = "T2 performance without stress",
+    as.data.frame(
+      performance::r2_nakagawa(
+        model_perf_without_stress
+      )
+    )
+  ),
+  
+  tibble(
+    Model = "T2 performance with stress",
+    as.data.frame(
+      performance::r2_nakagawa(
+        model_perf_with_stress
+      )
+    )
+  )
+)
+
+print(
+  strain_r2_results,
+  n = 20,
+  width = Inf
+)
+
+# -------------------------
+# SAVE MODELS
+# -------------------------
+
+dir.create(
+  "output/models",
+  recursive = TRUE,
+  showWarnings = FALSE
+)
+
+saveRDS(
+  model_strain,
+  "output/models/model_exploratory_t2_stress.rds"
+)
+
+saveRDS(
+  model_perf_without_stress,
+  "output/models/model_exploratory_performance_without_stress.rds"
+)
+
+saveRDS(
+  model_perf_with_stress,
+  "output/models/model_exploratory_performance_with_stress.rds"
+)
+
+# -------------------------
+# SAVE OUTPUT TABLES
+# -------------------------
+
+dir.create(
+  "output/tables",
+  recursive = TRUE,
+  showWarnings = FALSE
+)
+
+write_csv(
+  strain_sample_summary,
+  "output/tables/exploratory_stress_pathway_sample_summary.csv"
+)
+
+write_csv(
+  strain_results,
+  "output/tables/exploratory_stress_pathway_coefficients.csv"
+)
+
+write_csv(
+  strain_r2_results,
+  "output/tables/exploratory_stress_pathway_r2.csv"
+)
+
+# -------------------------
+# EXPORT EDITABLE TABLE TO WORD
+# -------------------------
+
+library(modelsummary)
+
+stress_models <- list(
+  "T2 stress" = model_strain,
+  "T2 performance without stress" =
+    model_perf_without_stress,
+  "T2 performance with stress" =
+    model_perf_with_stress
+)
+
+modelsummary(
+  stress_models,
+  output =
+    "output/tables/Table_S_exploratory_stress_pathway.docx",
+  statistic = "({std.error})",
+  stars = TRUE
+)
+
+
