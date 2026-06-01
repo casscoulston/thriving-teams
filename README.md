@@ -62,7 +62,7 @@ Raw data are not included in this repository due to confidentiality and ethics r
 
 ###  Missing data diagnostics
 - `scripts/10c_missing_data_diagnostics.R`  
-     Examines missing data patterns and attrition prior to multilevel modelling. Computes overall missingness, visualises missing data patterns (naniar), and conducts logistic regression analyses to test whether dropout at T2 and T3 is associated with baseline variables (feeling disconnected, connection overload, and team work engagement). Results support a missing at random (MAR) assumption and justify the use of full information maximum likelihood (FIML) in subsequent analyses.
+     Examines missing data patterns and attrition prior to multilevel modelling. Computes overall missingness, visualises missing data patterns (naniar), and conducts logistic regression analyses to test whether dropout at T2 and T3 is associated with baseline variables (feeling disconnected, connection overload, and team work engagement). Results support a missing at random (MAR) assumption. Primary multilevel models use available complete observations for the variables included in each analysis.
   
 ###  Main multilevel analyses
 - `scripts/11_main_modesl_outputs.R`  
