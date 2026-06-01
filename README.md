@@ -48,7 +48,7 @@ Raw data are not included in this repository due to confidentiality and ethics r
   ### Psychometrics and aggregation
 
 - `scripts/09_rebuild_table2_aggregation_reliability.R`  
-  Rebuilds the aggregation and reliability table for team-level constructs across waves. The script computes mean item composites, Cronbach’s alpha, McDonald’s omega, ICC(1), ICC(2), and median/mean rwg(j) for team engagement, control over work time, and team psychological safety.
+  Rebuilds the aggregation and reliability table for team-level constructs across waves. The script computes mean item composites, Cronbach’s alpha, McDonald’s omega, ICC(1), ICC(2), and median/mean rwg(j) for control over work time and team psychological safety.
 
   
 
