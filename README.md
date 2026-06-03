@@ -70,12 +70,10 @@ Raw data are not included in this repository due to confidentiality and ethics r
 
 - `scripts/12_exploratory_stress_pathway.R`  
    Examines occupational stress as a potential strain-related pathway linking hybrid-work demands and resources to perceived team performance. Tests whether Time 1 demands and resources predict Time 2 occupational stress after accounting for baseline stress, and whether Time 2 stress is associated with Time 2 performance after controlling for prior performance. 
-
-- `scripts/13_exploratory_stress_model.R`  
-  This is work in progress still 
   
-### Next planned section
-- Supplementary robustness analyses T1-T3
+### T1-T3 Robustness analyses
+- `scripts/13_robustness_analysis.T1_T3.R` 
+    Runs supplementary T1–T3 robustness analyses for team work engagement and team performance. It mirrors the primary T1–T2 multilevel models using Time 3 outcomes, while retaining Time 1 team resources, Time 1 individual demands, and the same team-level aggregation and centering logic. The analyses are intended as supplementary robustness checks rather than primary hypothesis tests.
 
 ## Analytic sample rule
 
