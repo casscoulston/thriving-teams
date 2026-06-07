@@ -113,6 +113,11 @@ calc_alpha_omega <- function(df, item_cols) {
     select(all_of(item_cols)) %>%
     mutate(across(everything(), as.numeric))
   
+  # Note: check.keys = FALSE is intentional. Reverse-coded items
+  # (RecodedPsychologicalsafety_1_T*, RecodedPsychologicalSafety_3_T*,
+  # RecodedPsychologicalSafety_5_T*) have already been reversed at the
+  # SPSS preparation stage. Allowing psych::alpha to auto-reverse would
+  # double-reverse these items.
   alpha_out <- tryCatch(
     psych::alpha(items, warnings = FALSE, check.keys = FALSE),
     error = function(e) NULL
