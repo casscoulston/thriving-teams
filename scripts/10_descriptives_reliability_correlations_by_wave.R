@@ -43,7 +43,7 @@ fmt_sd <- function(x, digits = 2) {
 calc_alpha_omega <- function(df, item_cols) {
   
   items <- df %>%
-    select(all_of(item_cols)) %>%
+    dplyr::select(dplyr::all_of(item_cols)) %>%
     mutate(
       across(
         everything(),
@@ -354,7 +354,7 @@ descriptives_main <- tibble(
 # -------------------------
 
 vars_for_corr <- model_data_t1_t2 %>%
-  select(
+  dplyr::select(
     t1_psychological_safety_individual,
     t1_control_over_work_time_individual,
     t1_feeling_disconnected,
@@ -448,7 +448,7 @@ table_main_corr <- descriptives_main %>%
   mutate(
     `#` = 1:n()
   ) %>%
-  select(
+  dplyr::select(
     `#`,
     Variable,
     Mean,
@@ -458,7 +458,7 @@ table_main_corr <- descriptives_main %>%
   ) %>%
   bind_cols(
     cor_with_stars_df %>%
-      select(
+      dplyr::select(
         -Variable
       )
   )
@@ -510,4 +510,78 @@ write_csv(
   "output/tables/table_main_descriptives_correlations_t1_t2_FINAL_corrected.csv"
 )
 
+library(tidyverse)
+library(flextable)
+library(officer)
+
+table3_final <- table_main_corr %>%
+  rename(
+    `1` = t1_psychological_safety_individual,
+    `2` = t1_control_over_work_time_individual,
+    `3` = t1_feeling_disconnected,
+    `4` = t1_connection_overload,
+    `5` = t1_twe,
+    `6` = t2_twe,
+    `7` = t1_team_performance,
+    `8` = t2_team_performance,
+    `9` = team_tenure
+  ) %>%
+  mutate(
+    Variable = c(
+      "T1 Psych safety",
+      "T1 Control work time",
+      "T1 Disconnected",
+      "T1 Conn. overload",
+      "T1 Team engagement",
+      "T2 Team engagement",
+      "T1 Team performance",
+      "T2 Team performance",
+      "Team tenure"
+    )
+  ) %>%
+  rename(
+    `M` = Mean,
+    `SD` = SD,
+    `α` = Alpha,
+    `ω` = Omega
+  ) %>%
+  mutate(
+    `α` = ifelse(is.na(`α`), "", sprintf("%.2f", `α`)),
+    `ω` = ifelse(is.na(`ω`), "", sprintf("%.2f", `ω`))
+  )
+
+write_csv(
+  table3_final,
+  "output/tables/table3_descriptives_correlations_final.csv"
+)
+
+table3_ft <- flextable(table3_final) %>%
+  fontsize(size = 7, part = "all") %>%
+  padding(padding = 1, part = "all") %>%
+  align(align = "center", part = "all") %>%
+  align(j = 2, align = "left", part = "all") %>%
+  width(j = 1, width = 0.35) %>%
+  width(j = 2, width = 1.60) %>%
+  width(j = 3:6, width = 0.45) %>%
+  width(j = 7:15, width = 0.38) %>%
+  line_spacing(space = 1, part = "all") %>%
+  set_table_properties(layout = "fixed") %>%
+  theme_booktabs()
+
+doc <- read_docx() %>%
+  body_add_par(
+    "Table 3. Means, standard deviations, reliabilities, and correlations",
+    style = "Normal"
+  ) %>%
+  body_add_flextable(table3_ft) %>%
+  body_add_par(
+    "Note. N = 182 individuals nested within 43 teams. Cronbach's alpha is reported as α and McDonald's omega as ω. Correlations are shown below the diagonal and reported descriptively. Significance levels are based on unadjusted p values: * p < .05. ** p < .01.",
+    style = "Normal"
+  ) %>%
+  body_end_section_landscape()
+
+print(
+  doc,
+  target = "output/tables/table3_descriptives_correlations_final_landscape.docx"
+)
 
