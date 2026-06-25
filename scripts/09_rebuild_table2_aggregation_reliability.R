@@ -1,9 +1,11 @@
+
 # install.packages("psych")
 # install.packages("multilevel")
 
 library(tidyverse)
 library(haven)
 library(psych)
+library(multilevel)
 
 wide_df_raw <- readRDS("data_raw/wide_df_raw.rds")
 
@@ -56,42 +58,44 @@ mean_if_enough <- function(items, min_prop = .80) {
 
 calc_icc <- function(df, team_col, score_col) {
   d <- df %>%
-    select(team = all_of(team_col), score = all_of(score_col)) %>%
-    filter(!is.na(team), !is.na(score))
+    dplyr::select(
+      team = dplyr::all_of(team_col),
+      score = dplyr::all_of(score_col)
+    ) %>%
+    filter(!is.na(team), !is.na(score)) %>%
+    mutate(team = as.factor(team))
   
   if (nrow(d) < 3 || dplyr::n_distinct(d$team) < 2) {
     return(tibble(ICC1 = NA_real_, ICC2 = NA_real_))
   }
   
   aov_obj <- aov(score ~ team, data = d)
-  aov_tab <- summary(aov_obj)[[1]]
   
-  ms_between <- aov_tab["team", "Mean Sq"]
-  ms_within <- aov_tab["Residuals", "Mean Sq"]
+  icc1 <- tryCatch(
+    multilevel::ICC1(aov_obj),
+    error = function(e) NA_real_
+  )
   
-  k <- d %>%
-    count(team) %>%
-    summarise(mean_n = mean(n), .groups = "drop") %>%
-    pull(mean_n)
-  
-  icc1 <- (ms_between - ms_within) /
-    (ms_between + (k - 1) * ms_within)
-  
-  icc2 <- (ms_between - ms_within) /
-    ms_between
+  icc2 <- tryCatch(
+    multilevel::ICC2(aov_obj),
+    error = function(e) NA_real_
+  )
   
   tibble(ICC1 = icc1, ICC2 = icc2)
 }
 
 calc_rwg <- function(df, team_col, item_cols, scale_min = 1, scale_max = 7) {
   d <- df %>%
-    select(all_of(team_col), all_of(item_cols)) %>%
+    dplyr::select(
+      dplyr::all_of(team_col),
+      dplyr::all_of(item_cols)
+    ) %>%
     filter(!is.na(.data[[team_col]]))
   
   expected_var <- ((scale_max - scale_min + 1)^2 - 1) / 12
   
   items <- d %>%
-    select(all_of(item_cols)) %>%
+    dplyr::select(dplyr::all_of(item_cols)) %>%
     mutate(across(everything(), as.numeric)) %>%
     as.matrix()
   
@@ -110,7 +114,7 @@ calc_rwg <- function(df, team_col, item_cols, scale_min = 1, scale_max = 7) {
 
 calc_alpha_omega <- function(df, item_cols) {
   items <- df %>%
-    select(all_of(item_cols)) %>%
+    dplyr::select(dplyr::all_of(item_cols)) %>%
     mutate(across(everything(), as.numeric))
   
   alpha_out <- tryCatch(
@@ -155,7 +159,7 @@ build_construct_stats <- function(
     filter(.data[[team_col]] %in% valid_teams) %>%
     mutate(
       composite = mean_if_enough(
-        select(., all_of(item_cols)),
+        dplyr::select(., dplyr::all_of(item_cols)),
         min_prop = min_prop
       )
     )
@@ -261,3 +265,5 @@ write_csv(
 length(valid_t1_teams)
 length(valid_t2_teams)
 length(valid_t3_teams)
+
+
