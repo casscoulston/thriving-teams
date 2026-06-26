@@ -50,7 +50,7 @@ Raw data are not included in this repository due to confidentiality and ethics r
 - `scripts/09_rebuild_table2_aggregation_reliability.R`  
   Rebuilds the aggregation and reliability table for team-level constructs across waves. The script computes mean item composites, Cronbach’s alpha, McDonald’s omega, ICC(1), ICC(2), and median/mean rwg(j) for control over work time and team psychological safety.
 
- - 'scripts/09b_build_multilevel_modelling_dataset_t1_t2.R'
+ - `scripts/09b_build_multilevel_modelling_dataset_t1_t2.R`
    Builds the T1–T2 multilevel modelling dataset from the raw wide dataset. The script creates respondent-level composites using an 80% item-completion rule, aggregates T1 psychological safety and control over work time to the team level, creates grand-mean-centred Level 2 resource variables, retains Level 1 demands, outcomes, stress variables and team tenure, and saves the processed modelling dataset for downstream analyses.  
 
  ###  Means, standard deviations, and correlations
