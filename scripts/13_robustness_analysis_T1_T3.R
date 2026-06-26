@@ -1,5 +1,6 @@
+
 # ============================================================
-# SUPPLEMENTARY T1 -> T3 ROBUSTNESS MODELS
+# SCRIPT S5: SUPPLEMENTARY T1 -> T3 ROBUSTNESS MODELS
 # ============================================================
 #
 # Purpose:
@@ -10,6 +11,8 @@
 # Notes:
 # - This is a supplementary robustness analysis
 # - Primary models remain T1 -> T2
+# - Composite scores are calculated where at least 80% of items
+#   for the relevant scale are completed
 # ============================================================
 
 library(tidyverse)
@@ -43,12 +46,23 @@ clean_team_id <- function(x) {
   x
 }
 
-row_mean_na <- function(items) {
+# Calculates mean composites where at least 80% of items are completed.
+# Converts scores to NA where too few items, or no items, are available.
+
+row_mean_na <- function(items, min_prop = .80) {
+  items <- as.data.frame(items)
+  
+  required_items <- ceiling(ncol(items) * min_prop)
+  completed_items <- rowSums(!is.na(items))
+  
   score <- rowMeans(
-    as.data.frame(items),
+    items,
     na.rm = TRUE
   )
+  
+  score[completed_items < required_items] <- NA_real_
   score[is.nan(score)] <- NA_real_
+  
   score
 }
 
@@ -90,7 +104,7 @@ df_composites <- df_num %>%
   mutate(
     # T1 individual ratings used to create level-2 resources
     t1_psychological_safety_individual = row_mean_na(
-      select(
+      dplyr::select(
         .,
         RecodedPsychologicalsafety_1_T1,
         Psychological_safety_2_T1,
@@ -103,7 +117,7 @@ df_composites <- df_num %>%
     ),
     
     t1_control_over_work_time_individual = row_mean_na(
-      select(
+      dplyr::select(
         .,
         Choice_remote_work_T1,
         Choice_work_week_T1,
@@ -115,7 +129,7 @@ df_composites <- df_num %>%
     
     # T1 level-1 demands
     t1_feeling_disconnected = row_mean_na(
-      select(
+      dplyr::select(
         .,
         Disconnection_1_T1,
         Disconnection_2_T1,
@@ -130,7 +144,7 @@ df_composites <- df_num %>%
     ),
     
     t1_connection_overload = row_mean_na(
-      select(
+      dplyr::select(
         .,
         Connectionoverload_1_T1,
         Connectionoverload_2_T1,
@@ -142,7 +156,7 @@ df_composites <- df_num %>%
     
     # T1 baseline outcomes
     t1_twe = row_mean_na(
-      select(
+      dplyr::select(
         .,
         Engagement_1_T1,
         Engagement_2_T1,
@@ -157,7 +171,7 @@ df_composites <- df_num %>%
     ),
     
     t1_team_performance = row_mean_na(
-      select(
+      dplyr::select(
         .,
         Performance_1_T1,
         Performance_2_T1,
@@ -168,7 +182,7 @@ df_composites <- df_num %>%
     
     # T3 outcomes
     t3_twe = row_mean_na(
-      select(
+      dplyr::select(
         .,
         Engagement_1_T3,
         Engagement_2_T3,
@@ -183,7 +197,7 @@ df_composites <- df_num %>%
     ),
     
     t3_team_performance = row_mean_na(
-      select(
+      dplyr::select(
         .,
         Performance_1_T3,
         Performance_2_T3,
@@ -426,14 +440,38 @@ summary(model_t3_perf_4)
 # -------------------------
 
 r2_t3_results <- bind_rows(
-  tibble(Model = "T3 TWE M1", as.data.frame(performance::r2_nakagawa(model_t3_twe_1))),
-  tibble(Model = "T3 TWE M2", as.data.frame(performance::r2_nakagawa(model_t3_twe_2))),
-  tibble(Model = "T3 TWE M3", as.data.frame(performance::r2_nakagawa(model_t3_twe_3))),
-  tibble(Model = "T3 TWE M4", as.data.frame(performance::r2_nakagawa(model_t3_twe_4))),
-  tibble(Model = "T3 Performance M1", as.data.frame(performance::r2_nakagawa(model_t3_perf_1))),
-  tibble(Model = "T3 Performance M2", as.data.frame(performance::r2_nakagawa(model_t3_perf_2))),
-  tibble(Model = "T3 Performance M3", as.data.frame(performance::r2_nakagawa(model_t3_perf_3))),
-  tibble(Model = "T3 Performance M4", as.data.frame(performance::r2_nakagawa(model_t3_perf_4)))
+  tibble(
+    Model = "T3 TWE M1",
+    as.data.frame(performance::r2_nakagawa(model_t3_twe_1))
+  ),
+  tibble(
+    Model = "T3 TWE M2",
+    as.data.frame(performance::r2_nakagawa(model_t3_twe_2))
+  ),
+  tibble(
+    Model = "T3 TWE M3",
+    as.data.frame(performance::r2_nakagawa(model_t3_twe_3))
+  ),
+  tibble(
+    Model = "T3 TWE M4",
+    as.data.frame(performance::r2_nakagawa(model_t3_twe_4))
+  ),
+  tibble(
+    Model = "T3 Performance M1",
+    as.data.frame(performance::r2_nakagawa(model_t3_perf_1))
+  ),
+  tibble(
+    Model = "T3 Performance M2",
+    as.data.frame(performance::r2_nakagawa(model_t3_perf_2))
+  ),
+  tibble(
+    Model = "T3 Performance M3",
+    as.data.frame(performance::r2_nakagawa(model_t3_perf_3))
+  ),
+  tibble(
+    Model = "T3 Performance M4",
+    as.data.frame(performance::r2_nakagawa(model_t3_perf_4))
+  )
 )
 
 print(r2_t3_results, n = 20, width = Inf)
@@ -507,3 +545,7 @@ modelsummary(
 )
 
 n_distinct(perf_t3_data$TeamRef_T1)
+
+
+
+
