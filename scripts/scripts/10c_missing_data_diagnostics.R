@@ -1,4 +1,26 @@
-install.packages("naniar")
+
+# ============================================================
+# SCRIPT 10C: MISSING DATA AND ATTRITION DIAGNOSTICS
+# ============================================================
+#
+# Purpose:
+# - Summarise missingness across the raw wide dataset
+# - Create dropout indicators for T2 and T3
+# - Check whether follow-up non-response is predicted by key T1 variables
+#
+# Notes:
+# - The wide file is anchored on T1 participant rows.
+# - Attrition analyses are conducted among respondents in the T1 analytic
+#   baseline sample, restricted to T1 teams with at least 3 respondents.
+# - Dropout is defined as follow-up non-response at T2/T3, using missing
+#   TeamRef_T2 / TeamRef_T3.
+# - Blank TeamRef values are coded as empty strings ("") in the raw file,
+#   so these are first converted to NA.
+# - Engagement-item response indicators are retained as diagnostic checks.
+# - T1 composites are calculated using an 80% item-completion rule.
+# ============================================================
+
+# install.packages("naniar")
 
 library(tidyverse)
 library(haven)
@@ -22,14 +44,21 @@ to_numeric_if_labelled <- function(x) {
   x
 }
 
-# Calculate a mean composite while converting NaN to NA
-# where all items are missing.
-row_mean_na <- function(items) {
+# Calculates mean composites where at least 80% of items are completed.
+# Converts scores to NA where too few items, or no items, are available.
+
+row_mean_na <- function(items, min_prop = .80) {
+  items <- as.data.frame(items)
+  
+  required_items <- ceiling(ncol(items) * min_prop)
+  completed_items <- rowSums(!is.na(items))
+  
   score <- rowMeans(
-    as.data.frame(items),
+    items,
     na.rm = TRUE
   )
   
+  score[completed_items < required_items] <- NA_real_
   score[is.nan(score)] <- NA_real_
   
   score
@@ -44,6 +73,17 @@ df_num <- wide_df_raw %>%
     across(
       everything(),
       to_numeric_if_labelled
+    ),
+    across(
+      c(
+        TeamRef_T1,
+        TeamRef_T2,
+        TeamRef_T3
+      ),
+      ~ na_if(
+        as.character(.),
+        ""
+      )
     )
   )
 
@@ -84,15 +124,28 @@ vis_miss(
 # 2. CREATE DROPOUT VARIABLES
 # -------------------------
 #
-# Dropout is defined as having no engagement-item responses
-# at the relevant follow-up wave.
+# Primary dropout definition:
+# - Dropout is defined as follow-up non-response, indicated by missing
+#   TeamRef_T2 / TeamRef_T3 after blank strings have been converted to NA.
+#
+# Diagnostic comparison:
+# - Also calculate whether the respondent has no engagement-item responses
+#   at the relevant follow-up wave.
 
 df_attrition <- df_num %>%
   mutate(
-    dropout_t2 = ifelse(
+    dropout_t2 = as.integer(
+      is.na(TeamRef_T2)
+    ),
+    
+    dropout_t3 = as.integer(
+      is.na(TeamRef_T3)
+    ),
+    
+    dropout_t2_by_engagement = as.integer(
       rowSums(
         !is.na(
-          select(
+          dplyr::select(
             .,
             Engagement_1_T2,
             Engagement_2_T2,
@@ -105,15 +158,13 @@ df_attrition <- df_num %>%
             Engagement_9_T2
           )
         )
-      ) == 0,
-      1,
-      0
+      ) == 0
     ),
     
-    dropout_t3 = ifelse(
+    dropout_t3_by_engagement = as.integer(
       rowSums(
         !is.na(
-          select(
+          dplyr::select(
             .,
             Engagement_1_T3,
             Engagement_2_T3,
@@ -126,9 +177,7 @@ df_attrition <- df_num %>%
             Engagement_9_T3
           )
         )
-      ) == 0,
-      1,
-      0
+      ) == 0
     )
   )
 
@@ -139,7 +188,7 @@ df_attrition <- df_num %>%
 df_attrition <- df_attrition %>%
   mutate(
     t1_disconnected = row_mean_na(
-      select(
+      dplyr::select(
         .,
         Disconnection_1_T1,
         Disconnection_2_T1,
@@ -154,7 +203,7 @@ df_attrition <- df_attrition %>%
     ),
     
     t1_overload = row_mean_na(
-      select(
+      dplyr::select(
         .,
         Connectionoverload_1_T1,
         Connectionoverload_2_T1,
@@ -165,7 +214,7 @@ df_attrition <- df_attrition %>%
     ),
     
     t1_twe = row_mean_na(
-      select(
+      dplyr::select(
         .,
         Engagement_1_T1,
         Engagement_2_T1,
@@ -181,7 +230,69 @@ df_attrition <- df_attrition %>%
   )
 
 # -------------------------
-# 4. CHECK DROPOUT COUNTS
+# 4. APPLY T1 ANALYTIC BASELINE TEAM-SIZE FILTER
+# -------------------------
+#
+# Attrition analyses are conducted among respondents in the T1 analytic
+# baseline sample, restricted to T1 teams with at least 3 respondents.
+# The T2/T3 3+ team rule is not applied to define dropout, because the
+# purpose here is to assess follow-up non-response rather than analytic
+# exclusion due to team size.
+
+df_attrition_analytic <- df_attrition %>%
+  filter(
+    !is.na(TeamRef_T1)
+  ) %>%
+  group_by(
+    TeamRef_T1
+  ) %>%
+  filter(
+    n() >= 3
+  ) %>%
+  ungroup()
+
+cat(
+  "Rows before T1 team-size filter:",
+  nrow(df_attrition),
+  "\n"
+)
+
+cat(
+  "Rows after T1 team-size filter:",
+  nrow(df_attrition_analytic),
+  "\n"
+)
+
+cat(
+  "Number of T1 teams after filter:",
+  n_distinct(df_attrition_analytic$TeamRef_T1),
+  "\n"
+)
+
+# -------------------------
+# 5. CHECK DROPOUT DEFINITIONS IN T1 ANALYTIC BASELINE SAMPLE
+# -------------------------
+
+dropout_definition_check_t2 <- table(
+  by_teamref = df_attrition_analytic$dropout_t2,
+  by_engagement = df_attrition_analytic$dropout_t2_by_engagement
+)
+
+dropout_definition_check_t3 <- table(
+  by_teamref = df_attrition_analytic$dropout_t3,
+  by_engagement = df_attrition_analytic$dropout_t3_by_engagement
+)
+
+print(
+  dropout_definition_check_t2
+)
+
+print(
+  dropout_definition_check_t3
+)
+
+# -------------------------
+# 6. CHECK DROPOUT COUNTS
 # -------------------------
 
 dropout_summary <- tibble(
@@ -191,13 +302,23 @@ dropout_summary <- tibble(
   ),
   
   Retained = c(
-    sum(df_attrition$dropout_t2 == 0, na.rm = TRUE),
-    sum(df_attrition$dropout_t3 == 0, na.rm = TRUE)
+    sum(df_attrition_analytic$dropout_t2 == 0, na.rm = TRUE),
+    sum(df_attrition_analytic$dropout_t3 == 0, na.rm = TRUE)
   ),
   
   Dropped_out = c(
-    sum(df_attrition$dropout_t2 == 1, na.rm = TRUE),
-    sum(df_attrition$dropout_t3 == 1, na.rm = TRUE)
+    sum(df_attrition_analytic$dropout_t2 == 1, na.rm = TRUE),
+    sum(df_attrition_analytic$dropout_t3 == 1, na.rm = TRUE)
+  ),
+  
+  Total = c(
+    nrow(df_attrition_analytic),
+    nrow(df_attrition_analytic)
+  ),
+  
+  Retention_Percentage = c(
+    mean(df_attrition_analytic$dropout_t2 == 0, na.rm = TRUE) * 100,
+    mean(df_attrition_analytic$dropout_t3 == 0, na.rm = TRUE) * 100
   )
 )
 
@@ -206,7 +327,7 @@ print(
 )
 
 # -------------------------
-# 5. ATTRITION TESTS
+# 7. ATTRITION TESTS
 # -------------------------
 
 attrition_t2_model <- glm(
@@ -214,7 +335,7 @@ attrition_t2_model <- glm(
     t1_disconnected +
     t1_overload +
     t1_twe,
-  data = df_attrition,
+  data = df_attrition_analytic,
   family = binomial
 )
 
@@ -227,7 +348,7 @@ attrition_t3_model <- glm(
     t1_disconnected +
     t1_overload +
     t1_twe,
-  data = df_attrition,
+  data = df_attrition_analytic,
   family = binomial
 )
 
@@ -236,23 +357,31 @@ summary(
 )
 
 # -------------------------
-# 6. OPTIONAL: PRINT ODDS RATIOS
+# 8. PRINT ODDS RATIOS
 # -------------------------
 
-exp(
+odds_ratios_t2 <- exp(
   coef(
     attrition_t2_model
   )
 )
 
-exp(
+odds_ratios_t3 <- exp(
   coef(
     attrition_t3_model
   )
 )
 
+print(
+  odds_ratios_t2
+)
+
+print(
+  odds_ratios_t3
+)
+
 # -------------------------
-# 7. SAVE MISSINGNESS SUMMARY
+# 9. SAVE OUTPUTS
 # -------------------------
 
 dir.create(
@@ -270,3 +399,32 @@ write_csv(
   dropout_summary,
   "output/tables/dropout_summary.csv"
 )
+
+write_csv(
+  as.data.frame(dropout_definition_check_t2) %>%
+    as_tibble(),
+  "output/tables/dropout_definition_check_t2.csv"
+)
+
+write_csv(
+  as.data.frame(dropout_definition_check_t3) %>%
+    as_tibble(),
+  "output/tables/dropout_definition_check_t3.csv"
+)
+
+write_csv(
+  tibble(
+    Term = names(odds_ratios_t2),
+    Odds_Ratio_T2 = as.numeric(odds_ratios_t2)
+  ),
+  "output/tables/attrition_odds_ratios_t2.csv"
+)
+
+write_csv(
+  tibble(
+    Term = names(odds_ratios_t3),
+    Odds_Ratio_T3 = as.numeric(odds_ratios_t3)
+  ),
+  "output/tables/attrition_odds_ratios_t3.csv"
+)
+
